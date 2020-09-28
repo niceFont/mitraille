@@ -29,34 +29,51 @@ defmodule Mitraille.Benchmark do
     elapsed = (end_time - start_time) / 1000
     {elapsed, result}
   end
-
+#refactor this
   def digest_results(:success, successes) do
-    grouped = Enum.reduce(successes, %{}, fn {_, code, _}, acc ->
+    successes
+    |> Enum.reduce(%{}, fn {_, code, _}, acc ->
         Map.update(acc, code, 1, fn v -> v + 1 end)
      end)
+    |> Enum.each(fn {k, v} -> IO.puts("Status: #{k} --> #{v} times") end)
 
-    IO.inspect(grouped)
   end
-  def digest_results(:fail, successes) do
-    grouped = Enum.reduce(successes, %{}, fn {_, code, _}, acc ->
+  def digest_results(:fail, fails) do
+    fails
+    |> Enum.reduce(%{}, fn {_, code, _}, acc ->
         Map.update(acc, code, 1, fn v -> v + 1 end)
      end)
-
-    IO.inspect(grouped)
+    |> Enum.each(fn {k, v} -> IO.puts("Status: #{k} --> #{v} times") end)
   end
+
+  def extract_type({:ok,{ time,{type, code, body}}}) do
+    extract_type({time, {type, code, body}})
+  end
+
+  def extract_type({_,{type, code, body }}) do
+    {type, code, body}
+  end
+
+
+  def extract_time({:ok, {time, _}}) do
+    time
+  end
+  def extract_time({time, _}) do
+    time
+  end
+
   def calculate_benchmarks(benchmark, results) do
-    times = Enum.map(results, fn {time, _} -> time end)
+    times = Enum.map(results, &extract_time/1)
     {min, max} = Enum.min_max(times)
     median = times
     |> Enum.sort()
     |> Enum.at(trunc(length(times) / 2))
-
     IO.puts("Min: #{min}s")
     IO.puts("Max: #{max}s")
     IO.puts("Median: #{median}s")
     IO.puts("Total: #{benchmark.total_time}s")
     {fails, successes} = results
-    |> Enum.map(fn {_, res} -> res end)
+    |> Enum.map(&extract_type/1)
     |> Enum.split_with(fn {type, _, _} -> type == :fail end)
 
     digest_results(:success, successes)
